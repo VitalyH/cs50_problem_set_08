@@ -1,12 +1,14 @@
 import os
 import re
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, url_for
+from flask_jsglue import JSGlue
 
 from cs50 import SQL
 from helpers import lookup
 
 # Configure application
 app = Flask(__name__)
+JSGlue(app)
 
 # Configure CS50 Library to use SQLite database
 db = SQL("sqlite:///mashup.db")
@@ -33,16 +35,40 @@ def index():
 def articles():
     """Look up articles for geo"""
 
-    # TODO
-    return jsonify([])
+    # Retrieve geo argument from HTML form
+    geo = request.args.get("geo")
+
+    # If argument is missing, raise RuntimeError
+    if not geo:
+        raise RuntimeError("Geo not set")
+
+    # Search for articles in the geo
+    articles = lookup(geo)
+
+    # Return up to 5 articles as a JSON object
+    if len(articles) > 5:
+        return jsonify([articles[0], articles[1], articles[2], articles[4], articles[5]])
+    else:
+        return jsonify(articles)
 
 
 @app.route("/search")
 def search():
     """Search for places that match query"""
 
-    # TODO
-    return jsonify([])
+    # Retrieve q from HTML form
+    q = request.args.get("q") + "%"
+
+    # Finds any postal code, city and state that start with q
+    place = db.execute("SELECT * FROM places WHERE postal_code \
+                                LIKE :q OR place_name LIKE :q OR admin_name1 LIKE :q", q=q)
+
+    # Return up to 10 places found as JSON object
+    if len(place) > 10:
+        return jsonify([place[0], place[1], place[2],  place[3],  place[4],
+                        place[5], place[6],  place[7],  place[8],  place[9]])
+    else:
+        return jsonify(place)
 
 
 @app.route("/update")

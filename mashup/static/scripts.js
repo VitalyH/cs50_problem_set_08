@@ -63,9 +63,49 @@ $(document).ready(function() {
 // Add marker for place to map
 function addMarker(place)
 {
-    // TODO
-}
+    // Extract the latitude and longitude of the place
+    var myLatLng = new google.maps.LatLng(place["latitude"], place["longitude"]);
 
+    // Set icon for the marker
+    var image = "http://maps.google.com/mapfiles/ms/micons/orange-dot.png";
+
+    // Marker
+    var marker = new google.maps.Marker({
+        position: myLatLng,
+        map: map,
+        title: place["place_name"] +", "+ place["admin_name1"],
+        label: place["place_name"] +", "+ place["admin_name1"],
+        icon : image
+    });
+
+    // Get articles for given place
+    $.getJSON(Flask.url_for("articles"), {geo: place.postal_code}, function(articles) {
+
+        // Only show window if articles are exist
+        if (!$.isEmptyObject(articles))
+        {
+			// Init unordered list
+            var articlesContent = "<ul>";
+            for (let i = 0; i < articles.length; i++)
+            {
+				// Put list items into articlesString
+            	articlesContent += "<li><a target='_NEW' href='" + articles[i].link
+            	+ "'>" + articles[i].title + "</a></li>";
+            }
+        }
+
+        // Close the unordered list of articles
+		articlesContent += "</ul>";
+
+		// Listen for the clicks on marker
+        google.maps.event.addListener(marker, 'click', function() {
+            showInfo(marker, articlesContent);
+		});
+    });
+
+    // Add marker to the map markers
+    markers.push(marker);
+}
 
 // Configure application
 function configure()
@@ -98,7 +138,7 @@ function configure()
         templates: {
             suggestion: Handlebars.compile(
                 "<div>" +
-                "TODO" +
+                "{{ place_name }}, {{ admin_name1 }}, {{ postal_code }}" +
                 "</div>"
             )
         }
@@ -122,8 +162,8 @@ function configure()
     // Re-enable ctrl- and right-clicking (and thus Inspect Element) on Google Map
     // https://chrome.google.com/webstore/detail/allow-right-click/hompjdfbfmmmgflfjdlnkohcplmboaeo?hl=en
     document.addEventListener("contextmenu", function(event) {
-        event.returnValue = true; 
-        event.stopPropagation && event.stopPropagation(); 
+        event.returnValue = true;
+        event.stopPropagation && event.stopPropagation();
         event.cancelBubble && event.cancelBubble();
     }, true);
 
@@ -138,7 +178,11 @@ function configure()
 // Remove markers from map
 function removeMarkers()
 {
-    // TODO
+    // Remove all markers from the map
+    for (let i = 0, n = markers.length; i < n; i++)
+    {
+	    markers[i].setMap(null);
+    }
 }
 
 
@@ -150,7 +194,7 @@ function search(query, syncResults, asyncResults)
         q: query
     };
     $.getJSON("/search", parameters, function(data, textStatus, jqXHR) {
-     
+
         // Call typeahead's callback with search results (i.e., places)
         asyncResults(data);
     });
@@ -184,7 +228,7 @@ function showInfo(marker, content)
 
 
 // Update UI's markers
-function update() 
+function update()
 {
     // Get map's bounds
     let bounds = map.getBounds();
